@@ -49,6 +49,7 @@ GREEN='\[\033[1;32m\]'
 yellow='\[\033[0;33m\]'
 YELLOW='\[\033[1;33m\]'
 blue='\[\033[0;34m\]'
+
 BLUE='\[\033[1;34m\]'
 magenta='\[\033[0;35m\]'
 MAGENTA='\[\033[1;35m\]'
@@ -61,8 +62,8 @@ NC='\[\033[0m\]' # No Color
 #can't indent here since it actually affects the prompt!
 loginprompt()
 {
-export PS1="$white[$yellow\$(date +%H:%M)$white]$green\u$white@$red\h$white:$cyan\w
-$ $white"
+export PS1="$white[$yellow\$(date +%H:%M)$white]$green\u$white@$red\h$white:$cyan\w $GREEN\$(__git_ps1 '[%s]')$cyan
+$ $NC"
 }
 
 #export FLEX_HOME="/cygdrive/c/Flex/Flex4.1"
@@ -72,9 +73,10 @@ export M2_HOME="/home/piers/programs/apache-maven-3.2.2"
 export M2="$M2_HOME/bin"
 export JAVA_7_HOME="/usr/lib/jvm/java-7-openjdk-amd64"
 export JAVA_6_HOME="/usr/lib/jvm/jdk1.6.0_26_oracle"
-export JAVA_8_HOME="/usr/lib/jvm/java-8-oracle"
+export JAVA_8_HOME="${HOME}/dev/jdk1.8.0_60"
 export JAVA_HOME=${JAVA_8_HOME};
 export MONGO="/home/piers/programs/mongodb-linux-x86_64-2.4.9"
+export EDITOR='vim';
 #export GIT_HOME="/cygdrive/c/Program Files (x86)/Git"
 #export SBT_PATH="/cygdrive/c/Program Files (x86)/sbt"
 
@@ -82,9 +84,7 @@ export MONGO="/home/piers/programs/mongodb-linux-x86_64-2.4.9"
 
 export EB_HOME="/home/piers/programs/ElasticBeanstalkCommandLineTool/AWS-ElasticBeanstalk-CLI-2.6.3/eb/linux/python2.7";
 
-CURRENT_ABSOLUTE_DIR="$(pwd)";
-
-export PATH=$M2:$JAVA_6_HOME/bin:${CURRENT_ABSOLUTE_DIR}/multi-box-login:${CURRENT_ABSOLUTE_DIR}/maven:~/dev/scripts/Loginscripts:~/dev/scripts/legacy-webapps:${MONGO}/bin:$EB_HOME:$PATH
+export PATH=$M2:$JAVA_6_HOME/bin:${HOME}/multi-box-login:${HOME}/maven:~/dev/scripts/Loginscripts:~/dev/scripts/legacy-webapps:${MONGO}/bin:$EB_HOME:$PATH
 
 
 variables()
@@ -98,16 +98,13 @@ variables()
 	export WORKSPACE="~/dev/workspace";
 	export REPO="svn+ssh://svn@svn.aptusinteractive.com/svn/";
 	export ANDROID_HOME="/home/piers/dev/android-sdk-linux-r23.0.2";
-	#Go workspace
-	export MAIN_GOPATH="$HOME/dev/go"
-	export PERSONAL_GOPATH="$HOME/dev/personal/go"
-	export GOPATH="$MAIN_GOPATH:$PERSONAL_GOPATH"
-	#for convenience add compiled go programs to path
-	export PATH="$PATH:$MAIN_GOPATH/bin:$PERSONAL_GOPATH/bin"
 	#go install location
-	export GOROOT="/usr/local/go"
+	export GOROOT="${HOME}/dev/go";
 	#the go binaries needbe on path so tha 
-	export PATH="$PATH:$GOROOT/bin"
+	export PATH="$PATH:$GOROOT/bin";
+    #There are a few scripts located here which are usefull to have on the path
+#	export PATH="${PATH}:/home/piers/dev/vimgobins/bin/";
+    export YOTI_BACKEND="${HOME}/dev/projects/yoti-backend";
 }
 
 
@@ -118,21 +115,32 @@ aliases()
 
 	#Quickly see all my processes
 	alias myprocs='ps -fu $USER'
-	
+	alias ack='ack-grep';
 	alias ..='cd ..'
 	alias la='ls -Al' # show hidden files
 
 	alias workspace='cd  ${WORKSPACE}';	
 	alias scripts='cd  ${HOME}/dev/scripts';
 	alias projects='cd  ${HOME}/dev/projects';
-	alias lampkicking='cd ${HOME}/dev/go/src/github.com/lampkicking'
 	alias dev='cd  ${HOME}/dev/'
-	alias gosrc='cd ${HOME}/dev/go/src'
 	alias ipass='cd  ${HOME}/dev/legacy-projects/ipass-server';
 	alias magazine-service='cd  ${HOME}/dev/projects/magazine-service';
 	alias documents='cd  ${HOME}/Documents';
 	alias logs='cd  ${HOME}/dev/logs';
-        
+
+    #yoti-backend aliases
+	alias lt='Ylogtail';
+	alias yl='Ylog';
+	alias bs='buildServicesInDocker.sh';
+	alias ds='deployServicesInDocker.sh';
+
+    #Ensures all vim keypresses are logged to this file
+    #then i can review it to find out my most used shortcuts
+    #alias vim='vim -w ~/.vim/keylog'
+    #git aliases        
+	alias gk='git checkout';
+
+
 	#Screen aliases
 	alias scr='screen -r';
 	alias sls='screen -ls';
@@ -141,6 +149,7 @@ aliases()
 	alias jps='jps -lm';
 	alias rm='rm -v';
 	alias d='docker';
+	alias vimgo='vim -u ~/.vimrc.go';
 	#Consider using this method
 	#alias rm='mv -t /root/MyTrash/'
 
@@ -191,6 +200,31 @@ bashopts()
 #Extra key bindings commented out ones seem to be enabled by default on ubuntu
 bindings()
 {
+
+	#bind f2 to git status
+	bind '"\eOQ":"git status\n"'
+
+	#bind f3 to ls -alh
+	bind '"\eOR":"ls -alh\n"'
+
+	#bind ctrl+up to cd ..
+	bind '"\e[1;5A":"cd ..\n"'
+
+    #bind f4 to git branch -a
+    bind '"\eOS":"git branch -a\n"'
+
+    #bind f5 to git diff
+    bind '"\e[15~":"git diff\n"'
+
+    #bind f6 to git commit
+    bind '"\e[17~":"git commit --verbose\n"'
+
+    #bind f9 to git cd -
+    bind '"\e[20~":"cd -\n"'
+
+    #bind alt+§ to fg
+    bind '"\e§":"fg\n"'
+
 	#bind ctrl+left back one word
 #	bind '"\eOD": backward-word'
 	
@@ -222,21 +256,92 @@ bindings()
 	#bind '"\eOF":kill-line'
 }
 
+# Automatically add completion for all aliases to commands having completion functions
+function alias_completion {
+    local namespace="alias_completion"
+
+    # parse function based completion definitions, where capture group 2 => function and 3 => trigger
+    local compl_regex='complete( +[^ ]+)* -F ([^ ]+) ("[^"]+"|[^ ]+)'
+    # parse alias definitions, where capture group 1 => trigger, 2 => command, 3 => command arguments
+    local alias_regex="alias ([^=]+)='(\"[^\"]+\"|[^ ]+)(( +[^ ]+)*)'"
+
+    # create array of function completion triggers, keeping multi-word triggers together
+    eval "local completions=($(complete -p | sed -Ene "/$compl_regex/s//'\3'/p"))"
+    (( ${#completions[@]} == 0 )) && return 0
+
+    # create temporary file for wrapper functions and completions
+    rm -f "/tmp/${namespace}-*.tmp" # preliminary cleanup
+    local tmp_file; tmp_file="$(mktemp "/tmp/${namespace}-${RANDOM}XXX.tmp")" || return 1
+
+    local completion_loader; completion_loader="$(complete -p -D 2>/dev/null | sed -Ene 's/.* -F ([^ ]*).*/\1/p')"
+
+    # read in "<alias> '<aliased command>' '<command args>'" lines from defined aliases
+    local line; while read line; do
+        eval "local alias_tokens; alias_tokens=($line)" 2>/dev/null || continue # some alias arg patterns cause an eval parse error
+        local alias_name="${alias_tokens[0]}" alias_cmd="${alias_tokens[1]}" alias_args="${alias_tokens[2]# }"
+
+        # skip aliases to pipes, boolean control structures and other command lists
+        # (leveraging that eval errs out if $alias_args contains unquoted shell metacharacters)
+        eval "local alias_arg_words; alias_arg_words=($alias_args)" 2>/dev/null || continue
+        # avoid expanding wildcards
+        read -a alias_arg_words <<< "$alias_args"
+
+        # skip alias if there is no completion function triggered by the aliased command
+        if [[ ! " ${completions[*]} " =~ " $alias_cmd " ]]; then
+            if [[ -n "$completion_loader" ]]; then
+                # force loading of completions for the aliased command
+                eval "$completion_loader $alias_cmd"
+                # 124 means completion loader was successful
+                [[ $? -eq 124 ]] || continue
+                completions+=($alias_cmd)
+            else
+                continue
+            fi
+        fi
+        local new_completion="$(complete -p "$alias_cmd")"
+
+        # create a wrapper inserting the alias arguments if any
+        if [[ -n $alias_args ]]; then
+            local compl_func="${new_completion/#* -F /}"; compl_func="${compl_func%% *}"
+            # avoid recursive call loops by ignoring our own functions
+            if [[ "${compl_func#_$namespace::}" == $compl_func ]]; then
+                local compl_wrapper="_${namespace}::${alias_name}"
+                    echo "function $compl_wrapper {
+                        (( COMP_CWORD += ${#alias_arg_words[@]} ))
+                        COMP_WORDS=($alias_cmd $alias_args \${COMP_WORDS[@]:1})
+                        (( COMP_POINT -= \${#COMP_LINE} ))
+                        COMP_LINE=\${COMP_LINE/$alias_name/$alias_cmd $alias_args}
+                        (( COMP_POINT += \${#COMP_LINE} ))
+                        $compl_func
+                    }" >> "$tmp_file"
+                    new_completion="${new_completion/ -F $compl_func / -F $compl_wrapper }"
+            fi
+        fi
+
+        # replace completion trigger by alias
+        new_completion="${new_completion% *} $alias_name"
+        echo "$new_completion" >> "$tmp_file"
+    done < <(alias -p | sed -Ene "s/$alias_regex/\1 '\2' '\3'/p")
+    source "$tmp_file" && rm -f "$tmp_file"
+} 
 
 ######################### - Run The Shit! - ###################################
-#Set the termial type
-export TERM=vt100
-#Define aliases
-aliases;
+#Set the termial type, used to be vt100 turns out that it does't support colors properly
+export TERM=xterm-256color
 #Export variables
 variables;
+#Define aliases
+aliases;
 # set a fancy prompt
 loginprompt;
 #set bash options
 bashopts
 #Enable custum key bindings
 bindings;
-
+#source the yoti-backend initialise script as we allways work within it
+source "${YOTI_BACKEND}/initialise.sh"
+#Add bash completion for aliases
+alias_completion;
 
 
 
@@ -339,7 +444,7 @@ sb2()
 
 qf()
 {
-	find . -name $1;
+	find . -name $@ 2>/dev/null;
 }
 
 iqf()
@@ -360,7 +465,47 @@ makeNewRemotGitBranch(){
 	git push origin origin:refs/heads/${1}
 }
 
+msubs(){
+	git status | grep "modified content)" | awk '{ print $2 }';
+}
+
+csubs(){
+	git status | grep "new commits" | awk '{ print $2 }';
+}
+
+
+stopalldocker(){
+	docker stop $(docker ps -q);
+}
+
+stopalldockerAsync(){
+	for container in $(docker ps -q); do
+		docker stop $container &
+	done
+}
+removealldocker(){
+	docker rm $(docker ps -a -q);
+}
+
+cleandockerimages(){
+	docker rmi $(docker images | grep "^<none>" | awk '{print $3}');
+}
+
+setgopath(){
+	export GOPATH=$(pwd);
+	export PATH="${GOPATH}/bin:${PATH}";
+}
+
 #Useful one liners to make into functions one day
 
 #print the captured bit
 #perl -ne 'm|local.pages.root=(.*)| &&  print "$1";' piers.properties
+
+#grep the disk as a file finding the given text and the preceeding and following 300 lines of context 
+#sudo grep -B300 -A300 'export GOPATH="$MAIN_GOPATH:$PERSONAL_GOPATH"' /dev/sda7 > file2.txt
+
+# grep inside find
+#find . -name  "*.go" -exec grep -H '10.0.0.214' '{}' \;
+
+#Find multiple files in multiple directories
+#find /usr/lib /usr/local/lib -type f \( -name "libtesseract.a" -o -name "liblept.a" -o -name "libjpeg.a" -o -name "libtiff.a" -o -name "libpng.a" -o -name "libz.a" -o -name "libm.a" -o -name "libstdc++.a" \)
