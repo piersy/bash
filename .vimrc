@@ -3,6 +3,20 @@ syntax on
 filetype plugin indent on
 set nocompatible
 
+if &term =~ '256color'
+  " disable Background Color Erase (BCE) so that color schemes
+  " render properly when inside 256-color tmux and GNU screen.
+  " see also http://snk.tuxfamily.org/log/vim-256color-bce.html
+  set t_ut=
+endif
+
+"Disable swap files they are annoying
+set noswapfile
+"Enable backup - they are useful
+set backup
+au BufWritePre * let &bex = '-' . strftime("%Y%m%d-%H%M%S") . '.vimbackup'
+set backupdir=~/vimtmp,.
+
 command -nargs=1 -complete=help Help help <args> | only
 
 " Setup the following abbreviations to use this approac for reliability
@@ -53,22 +67,56 @@ set statusline+=%c,     "cursor column
 set statusline+=%l/%L   "cursor line/total lines
 set statusline+=\ %P    "percent through file
 
+" This sets the textwidth automatically for markdown files (README.md)
+au BufRead,BufNewFile *.md setlocal textwidth=80
+"This ensures that text that is pasted over in visual mode does not
+"overwrite the last yanked text
+vnoremap p "_dP
+"Ensure quickfix always open at the bottom
+autocmd FileType qf wincmd J
 "pgup / pgdown move too far to track text easily but ctrl-d and ctrl-u are hard to reach and not comfy
 map <PageUp> <C-U>
 map <PageDown> <C-D>
+nnoremap <C-H> :<C-U>bp<CR>
+nnoremap <C-L> :<C-U>bn<CR>
+"Attempt to change cursor color
+"if &term =~ "xterm\\|rxvt"
+"    "use an orange cursor in insert mode
+"    let &t_SI = "\<Esc>]12;orange\x7"
+"    " use a red cursor otherwise
+"    let &t_EI = "\<Esc>]12;grey\x7"
+"    silent !echo -ne "\033]12;grey\007"
+"    " reset cursor when vim exits
+"    autocmd VimLeave * silent !echo -ne "\033]112\007"
+"    " use \003]12;gray\007 for gnome-terminal and rxvt up to
+"   " version 9.21
+"endif
+"if &term =~ '^xterm\\|rxvt'
+"    solid underscore
+"    let &t_SI .= "\<Esc>[4 q"
+"    " solid block
+"    let &t_EI .= "\<Esc>[2 q"
+"    " 1 or 0 -> blinking block
+"    " 3 -> blinking underscore
+"    " Recent versions of xterm (282 or above) also support
+"    " 5 -> blinking vertical bar
+"    " 6 -> solid vertical bar
+"endif
 "load arpeggio
 call arpeggio#load()
 let g:arpeggio_timeoutlen=100
 " having colon is a pain in the arse for most ex commands so use semicolon
-nnoremap <Plug>(arpeggio-default:;) :
-nnoremap <Plug>(arpeggio-default::) ;
-"nnoremap : ;
+"nmap <Plug>(arpeggio-default::) ;
+            "nnoremap <Plug>(arpeggio-default:;) :
 "nnoremap <Plug>(arpeggio-default:;) :
-Arpeggio inoremap jk  <Esc>
-Arpeggio cnoremap jk  <C-c>
-Arpeggio cnoremap df  <Cr>
-Arpeggio nmap lk 15j
-Arpeggio nmap ds 15k
+Arpeggio inoremap df  <Esc>
+Arpeggio vnoremap df  <Esc>
+Arpeggio cnoremap df  <C-c>
+Arpeggio inoremap jk  <Cr>
+Arpeggio cnoremap jk  <Cr>
+Arpeggio nnoremap jk  <Cr>
+Arpeggio nmap lk 15k
+Arpeggio nmap ds 15j
 "Explore in vim
 "
 " Toggle Vexplore with Ctrl-E
@@ -128,6 +176,12 @@ nmap <Plug>(arpeggio-default:s) <Plug>(easymotion-s)
 vmap <Plug>(arpeggio-default:s) <Plug>(easymotion-s)
 "Map bi directional line motion
 Arpeggio nmap ;l <Plug>(easymotion-bd-jk)
+Arpeggio vmap ;l <Plug>(easymotion-bd-jk)
+"nmap <Plug>(arpeggio-default::) 
+nnoremap <Plug>(arpeggio-default:;) :
+vnoremap <Plug>(arpeggio-default:;) :
+nnoremap : ;            
+vnoremap : ;            
 "vmap s <Plug>(easymotion-s)
 "nmap f <Plug>(easymotion-f)
 "nmap F <Plug>(easymotion-F)
@@ -138,12 +192,16 @@ cmap w!! %!sudo tee > /dev/null %
 "autocmd vimenter * NERDTree
 "close vim if nerdtree is the only open window
 autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary") | q | endif
+" Open nerd tree if no file
+autocmd StdinReadPre * let s:std_in=1
+autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
 noremap <F5> :NERDTreeToggle<CR>
+noremap <F6> :NERDTreeFind<CR>
 " Dont do this it causes a lot of issues as many keys have esc as part of their key codes
 "noremap <Esc> :wincmd w<CR>
 nnoremap <Plug>(arpeggio-default:d) d
 nnoremap <Plug>(arpeggio-default:f) f
-Arpeggio noremap df :wincmd w <CR> 
+Arpeggio nnoremap df :wincmd w <CR> 
 
 
 " If the current buffer has never been saved, it will have no name,
@@ -165,18 +223,30 @@ nmap <Leader>x :<C-u>Explore<CR>
 " for filetypes matching go set these commands
 "au FileType go nmap <F5> :%!goimports<CR>:%!gofmt<CR>
 " the <Leader> actually just resolves to the mapleader variable set earlier
+"
+" Ok it seems that noremapping have not been defined for plug
+" commands so noremap does not work for plug but we need to use it to
+" protect against our mapping of the colon to semicolon
+" Turn on case insensitive feature
+nnoremap <Plug>(arpeggio-default:a) a
+nnoremap <Plug>(arpeggio-default:u) u
+nnoremap <Plug>(arpeggio-default:i) i
+let g:EasyMotion_smartcase = 1
 au FileType go nmap <Leader>d <Plug>(go-doc-browser)
-au FileType go nmap <Leader>r :w<CR>\|<Plug>(go-run)
-au FileType go nmap <leader>b :w<CR>\|<Plug>(go-install)
-au FileType go nmap <leader>v :w<CR>\|<Plug>(go-vet)
-au FileType go nmap <leader>t :w<CR>\|<Plug>(go-test)
 au FileType go nmap <leader>s <Plug>(go-implements)
 au Filetype go nmap <leader>i <Plug>(go-info)
 au Filetype go nmap <leader>e <Plug>(go-rename)
-au Filetype go nmap <leader>c <Plug>(go-referrers)
+au Filetype go nmap <Leader>c <Plug>(go-referrers)
 au FileType go nmap <leader>o <Plug>(go-coverage)
 au FileType go nmap <Leader>gd <Plug>(go-doc)
 au FileType go nmap <Leader>gd <Plug>(go-doc)
+au FileType go noremap <leader>b :w<bar>GoInstall <Cr>
+au FileType go noremap <leader>v :w<bar>GoVet <Cr>
+au FileType go noremap <Leader>r :w<bar>GoRun<CR>
+au FileType go noremap <leader>t :w<bar>GoTest<CR>
+au FileType go Arpeggio noremap as :w<bar>GoInstall <Cr>
+au FileType go Arpeggio noremap ui :w<bar>GoInstall <Cr>
+au FileType go noremap <F7> :TagbarToggle<CR>
 "au FileType go Arpeggio nmap df <Plug>(go-def)
 let g:go_fmt_command = "goimports"
 "Set type info for word under cursor to automatically display

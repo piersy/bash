@@ -105,6 +105,14 @@ variables()
     #There are a few scripts located here which are usefull to have on the path
 #	export PATH="${PATH}:/home/piers/dev/vimgobins/bin/";
     export YOTI_BACKEND="${HOME}/dev/projects/yoti-backend";
+    #Vagrant settings vagrant used for kube environment
+    export VAGRANT_DEFAULT_PROVIDER=virtualbox
+    
+    #Settings for use with the vagrant-vms project running kube
+    #Nodes are the workers for kubernetes
+    #export NUM_NODES="1";
+    #Masters are the management box for kube clusters
+    #export NUM_MASTERS="1";
 }
 
 
@@ -180,12 +188,26 @@ bashopts()
 	bind 'set visible-stats on' # Show file info in complete
 
 	
-	#Larger Bash History lines
-	export HISTSIZE=100000
-	export HISTFILESIZE=100000
+	#Larger Bash History lines - these settings now defunct, see below
+	#export HISTSIZE=100000
+	#export HISTFILESIZE=100000
 	
+    # Eternal bash history.
+    # ---------------------
+    # Undocumented feature which sets the size to "unlimited".
+    # http://stackoverflow.com/questions/9457233/unlimited-bash-history
+    export HISTFILESIZE=
+    export HISTSIZE=
+    export HISTTIMEFORMAT="[%F %T] "
+    # Change the file location because certain bash sessions truncate .bash_history file upon close.
+    # http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
+    export HISTFILE=~/.bash_eternal_history
+    # Force prompt to write history after every command.
+    # http://superuser.com/questions/20900/bash-history-loss
+    PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+
 	#Append history to the hist file at end of session rather than overwrite
-	shopt -s histappend
+	#shopt -s histappend
 
 	#Append commands immediately to the histfile, giving a global history over sessions
 	#PROMPT_COMMAND='$PROMPT_COMMAND; history -a; history -n'
@@ -217,7 +239,7 @@ bindings()
     bind '"\e[15~":"git diff\n"'
 
     #bind f6 to git commit
-    bind '"\e[17~":"git commit --verbose\n"'
+    bind '"\e[17~":"git commit --verbose --reedit-message=HEAD --reset-author\n"'
 
     #bind f9 to git cd -
     bind '"\e[20~":"cd -\n"'
@@ -444,12 +466,12 @@ sb2()
 
 qf()
 {
-	find . -name $@ 2>/dev/null;
+	find . -name "$@" 2>/dev/null;
 }
 
 iqf()
 {
-	find . -iname $1;
+	find . -iname "$@" 2>/dev/null;
 }
 
 findInRepo()
@@ -461,19 +483,6 @@ countLinesOfJava(){
 	find -name "*.java" -exec bash -c 'cat $1 | wc -l' - {} \; | awk '{s+=$1} END {print s}';
 }
 
-makeNewRemotGitBranch(){
-	git push origin origin:refs/heads/${1}
-}
-
-msubs(){
-	git status | grep "modified content)" | awk '{ print $2 }';
-}
-
-csubs(){
-	git status | grep "new commits" | awk '{ print $2 }';
-}
-
-
 stopalldocker(){
 	docker stop $(docker ps -q);
 }
@@ -483,6 +492,7 @@ stopalldockerAsync(){
 		docker stop $container &
 	done
 }
+
 removealldocker(){
 	docker rm $(docker ps -a -q);
 }
@@ -493,10 +503,53 @@ cleandockerimages(){
 
 setgopath(){
 	export GOPATH=$(pwd);
-	export PATH="${GOPATH}/bin:${PATH}";
+    export PATH="${GOPATH}/bin:${PATH}";
+}
+
+#usage: new-session [-AdDP] [-F format] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [command]
+#A more advanced con=mmand for later
+# tmux send-keys -t "$pane" C-z 'some -new command' Enter
+tux-kube(){
+(
+cd ~/dev/kubediffs
+if ! tmux has-session -t kube; then
+    tmux new-session -d -s kube
+    tmux rename-window -t kube VimKubeDiffs
+    tmux send -t kube:VimKubeDiffs vim ENTER
+    bk #switch to backend
+    tmux new-window -t kube -n Vim
+    tmux send -t kube:Vim vim ENTER
+    tmux new-window -t kube -n Build
+    tmux new-window -t kube -n SshMaster
+    tmux new-window -t kube -n SshNode
+    tmux new-window -t kube -n pod
+fi
+tmux -2 attach-session -d -t 'kube'
+)
+}
+
+tux-working-kube(){
+(
+cd ~/dev/kubediffs
+if ! tmux has-session -t working-kube; then
+    tmux new-session -d -s working-kube
+    tmux send -t working-kube.0 vim ENTER
+    tmux rename-window -t working-kube.0 VimKubeDiffs
+    cd ~/dev/kubernetes
+    tmux new-window -t working-kube -n Build
+    tmux new-window -t working-kube -n SshMaster
+    tmux new-window -t working-kube -n SshNode
+    tmux new-window -t working-kube -n pod
+fi
+tmux -2 attach-session -d -t 'working-kube'
+)
 }
 
 #Useful one liners to make into functions one day
+
+#Subtitute words in files 
+#find . -name "*.go" |  xargs perl -p -i -e  's|FoundWord|ReplacementWord|'
+
 
 #print the captured bit
 #perl -ne 'm|local.pages.root=(.*)| &&  print "$1";' piers.properties
